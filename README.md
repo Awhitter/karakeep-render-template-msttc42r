@@ -35,7 +35,7 @@ This repo is a thin Render packaging of Karakeep's official AIO image plus Meili
 | **[Karakeep](https://github.com/karakeep-app/karakeep)** | Bookmarks, archives, search, AI tagging |
 | **[ghcr.io/karakeep-app/karakeep](https://github.com/karakeep-app/karakeep/pkgs/container/karakeep)** | Official AIO image (via thin Dockerfile) |
 | **[Meilisearch](https://www.meilisearch.com/)** | Full-text search (`getmeili/meilisearch`) |
-| **Chrome** | Headless crawler / screenshots (`alpine-chrome`) |
+| **Chrome** | Headless crawler / screenshots (digest-pinned official Karakeep Chrome) |
 | **[Render Disk](https://render.com/docs/disks)** | SQLite + data at `/data`; Meili data at `/meili_data` |
 
 ## Architecture
@@ -64,6 +64,29 @@ flowchart LR
 | `chrome` | Private (`runtime: docker`) | **starter** | Remote debugging on `9222` |
 
 Default region: **oregon**. Previews are off. LLM keys are not required at Apply time.
+
+### Chrome runtime and recovery
+
+The Chrome wrapper pins the stable Karakeep-tested `151.0.7922.47-r1` image by
+immutable digest. It inherits the image's non-root user and startup script.
+Keep the Render start-command override empty: the inherited script manages an
+internal browser port and exposes CDP on private port `9222`. Do not add
+`chromium-browser`, `USER chrome` or `--remote-debugging-port` overrides.
+See the [official migration contract](https://github.com/karakeep-app/karakeep/blob/v0.33.2/docs/docs/06-administration/09-chrome-image-migration.md).
+
+The `Chrome sidecar` workflow builds the exact Linux image and verifies CDP,
+JavaScript execution and a PNG screenshot against an in-memory fixture. It
+does not crawl an external site or call an AI provider. After deploying only
+the Chrome service, run `CHROME_URL=http://<private-chrome-host>:9222 node
+scripts/chrome-smoke.mjs` from a Node 22+ environment with access to the Render
+private network, and verify one existing Karakeep saved-page crawl.
+
+This change requires no app, database or search migration. Keep the current
+Karakeep and Meilisearch images, disks, environment and activation settings.
+Before a future browser upgrade, preserve the last verified image digest and
+service configuration for rollback. The original deployment recorded a failed
+build, so it is not a known-good rollback target. A failed candidate should
+remain unpromoted until the hosted smoke and private-network checks pass.
 
 ## Quick Start
 
