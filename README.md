@@ -80,6 +80,10 @@ does not crawl an external site or call an AI provider. After deploying only
 the Chrome service, run `CHROME_URL=http://<private-chrome-host>:9222 node
 scripts/chrome-smoke.mjs` from a Node 22+ environment with access to the Render
 private network, and verify one existing Karakeep saved-page crawl.
+The smoke resolves the service DNS to an IP before CDP discovery, matching
+Karakeep's connection code. A raw curl request with the service DNS name in the
+Host header can return `Host header is specified and is not an IP address or
+localhost`; that response alone does not mean the browser is unavailable.
 
 This change requires no app, database or search migration. Keep the current
 Karakeep and Meilisearch images, disks, environment and activation settings.

@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { lookup } from 'node:dns/promises';
 
 // This fixture never visits an external site or calls an AI provider.
-const base = process.env.CHROME_URL ?? 'http://127.0.0.1:9222';
+// Match Karakeep's startBrowserInstance: Chrome requires an IP/localhost Host
+// header, so resolve private service DNS before requesting its CDP endpoint.
+const configured = new URL(process.env.CHROME_URL ?? 'http://127.0.0.1:9222');
+const { address } = await lookup(configured.hostname.replace(/^\[|\]$/g, ''));
+configured.hostname = address.includes(':') ? `[${address}]` : address;
+const base = configured.origin;
 const versionResponse = await fetch(`${base}/json/version`, { signal: AbortSignal.timeout(10_000) });
 assert.equal(versionResponse.status, 200);
 const version = await versionResponse.json();
