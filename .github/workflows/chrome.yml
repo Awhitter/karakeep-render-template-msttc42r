@@ -28,7 +28,8 @@ jobs:
             if curl --fail --silent http://127.0.0.1:9222/json/version > /dev/null; then break; fi
             sleep 1
           done
-          timeout 45s node scripts/chrome-smoke.mjs
+          echo '127.0.0.1 chrome-private-smoke' | sudo tee -a /etc/hosts > /dev/null
+          CHROME_URL=http://chrome-private-smoke:9222 timeout 45s node scripts/chrome-smoke.mjs
           if docker logs chrome-check 2>&1 | grep -F 'Fontconfig error: No writable cache directories'; then
             exit 1
           fi
