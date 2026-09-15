@@ -1,0 +1,36 @@
+name: Chrome sidecar
+on:
+  pull_request:
+    paths: ['docker/Dockerfile.render-chrome', 'scripts/chrome-smoke.mjs', '.github/workflows/chrome.yml', '.dockerignore']
+  push:
+    branches: [main]
+    paths: ['docker/Dockerfile.render-chrome', 'scripts/chrome-smoke.mjs', '.github/workflows/chrome.yml', '.dockerignore']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: chrome-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate script and build the exact Render image
+        run: |
+          node --check scripts/chrome-smoke.mjs
+          docker build --platform linux/amd64 -f docker/Dockerfile.render-chrome -t karakeep-chrome-check .
+      - name: Verify private CDP, JavaScript and screenshot
+        run: |
+          docker run -d --init --name chrome-check -p 127.0.0.1:9222:9222 karakeep-chrome-check
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:9222/json/version > /dev/null; then break; fi
+            sleep 1
+          done
+          timeout 45s node scripts/chrome-smoke.mjs
+      - name: Capture startup logs and stop container
+        if: always()
+        run: |
+          docker logs chrome-check || true
+          docker rm -f chrome-check || true
