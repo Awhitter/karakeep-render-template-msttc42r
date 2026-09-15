@@ -29,6 +29,9 @@ jobs:
             sleep 1
           done
           timeout 45s node scripts/chrome-smoke.mjs
+          if docker logs chrome-check 2>&1 | grep -F 'Fontconfig error: No writable cache directories'; then
+            exit 1
+          fi
       - name: Capture startup logs and stop container
         if: always()
         run: |
